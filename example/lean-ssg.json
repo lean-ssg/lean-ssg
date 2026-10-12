@@ -1,0 +1,6 @@
+{
+  "title": "Mój blog",
+  "description": "Notatki, przemyślenia i rzeczy warte zapisania.",
+  "lang": "pl",
+  "blog": { "permalink": "/blog/", "title": "Blog" }
+}

@@ -1,0 +1,53 @@
+{
+  "name": "lean-ssg",
+  "version": "0.1.0",
+  "description": "Tiny, strictly typed static site generator: Markdown + HTML partials → static HTML.",
+  "keywords": [
+    "static-site-generator",
+    "ssg",
+    "markdown",
+    "blog",
+    "typescript"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/lean-ssg/lean-ssg#readme",
+  "bugs": {
+    "url": "https://github.com/lean-ssg/lean-ssg/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lean-ssg/lean-ssg.git"
+  },
+  "type": "module",
+  "bin": {
+    "lean-ssg": "lib/cli.js"
+  },
+  "files": [
+    "lib"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('lib', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "typecheck": "tsc",
+    "test": "tsx --test src/*.test.ts",
+    "check": "npm run typecheck && npm test",
+    "example": "npm run build && cd example && node ../lib/cli.js build",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "dependencies": {
+    "marked": "^18.1.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
