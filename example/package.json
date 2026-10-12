@@ -1,8 +1,0 @@
-{
-  "name": "lean-ssg-example",
-  "private": true,
-  "scripts": {
-    "build": "lean-ssg build",
-    "dev": "lean-ssg dev"
-  }
-}
