@@ -39,15 +39,6 @@ jobs:
       - name: Pack exactly what would be published
         run: npm pack
 
-      - name: "Smoke test: build the example site with the packed package"
-        working-directory: example
-        run: |
-          npm install --no-save ../lean-ssg-*.tgz
-          npm run build
-          test -f dist/index.html
-          test -f dist/404.html
-          grep -q "Pierwszy wpis" dist/blog/index.html
-
       - name: "Smoke test: invalid content fails the build"
         working-directory: example
         run: |

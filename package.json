@@ -37,7 +37,6 @@
     "typecheck": "tsc",
     "test": "tsx --test src/*.test.ts",
     "check": "npm run typecheck && npm test",
-    "example": "npm run build && cd example && node ../lib/cli.js build",
     "prepare": "npm run build",
     "prepublishOnly": "npm run check"
   },
