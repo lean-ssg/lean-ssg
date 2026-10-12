@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # Also runs the "prepare" script, which compiles src/ to lib/.
+      - run: npm ci
+
+      - name: Typecheck and test
+        run: npm run check
+
+      - name: Pack exactly what would be published
+        run: npm pack
+
+      - name: "Smoke test: build the example site with the packed package"
+        working-directory: example
+        run: |
+          npm install --no-save ../lean-ssg-*.tgz
+          npm run build
+          test -f dist/index.html
+          test -f dist/404.html
+          grep -q "Pierwszy wpis" dist/blog/index.html
+
+      - name: "Smoke test: invalid content fails the build"
+        working-directory: example
+        run: |
+          printf -- '---\ntitle: Broken\n---\n' > content/broken.md
+          if npx lean-ssg build; then
+            echo "::error::Build should fail when a page has no permalink"
+            exit 1
+          fi
