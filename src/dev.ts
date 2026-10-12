@@ -55,7 +55,7 @@ export function serve(dir: string, port: number): void {
  * Debounced, and never runs two tasks at once (changes made during a run trigger one more run).
  */
 export function watchAndRun(dirs: readonly string[], task: () => Promise<void>): void {
-  let timer: NodeJS.Timeout | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;
   let pending = false;
 
@@ -71,9 +71,11 @@ export function watchAndRun(dirs: readonly string[], task: () => Promise<void>):
   };
 
   for (const dir of dirs) {
-    if (existsSync(dir)) watch(dir, { recursive: true }, () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => void run(), 50);
-    });
+    if (existsSync(dir)) {
+      watch(dir, { recursive: true }, () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => void run(), 50);
+      });
+    }
   }
 }

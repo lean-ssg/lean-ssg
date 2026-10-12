@@ -22,7 +22,7 @@ async function runBuild(config: string | undefined): Promise<boolean> {
 }
 
 async function main(): Promise<number> {
-  let parsed;
+  let parsed: ReturnType<typeof parseArgs> | undefined;
   try {
     parsed = parseArgs({
       allowPositionals: true,
@@ -32,17 +32,19 @@ async function main(): Promise<number> {
     console.error(`${(error as Error).message}\n\n${USAGE}`);
     return 1;
   }
+
   const { positionals: [command], values } = parsed;
+  const config = typeof values["config"] === "string" ? values["config"] : undefined;
+  const port = typeof values["port"] === "string" ? Number.parseInt(values["port"], 10) : 8080;
 
   switch (command) {
     case "build":
-      return (await runBuild(values.config)) ? 0 : 1;
+      return (await runBuild(config)) ? 0 : 1;
     case "dev": {
-      const port = Number(values.port);
-      await runBuild(values.config);
+      await runBuild(config);
       serve(C.output, port);
-      const watched = [C.content, C.partials, C.public, ...(values.config ? [values.config] : [C.defaultConfig])];
-      watchAndRun(watched, async () => void (await runBuild(values.config)));
+      const watched = [C.content, C.partials, C.public, ...(config ? [config] : [C.defaultConfig])];
+      watchAndRun(watched, async () => void (await runBuild(config)));
       console.log(`→ http://localhost:${port}`);
       return 0;
     }

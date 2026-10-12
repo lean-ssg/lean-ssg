@@ -13,16 +13,19 @@ interface EntryBase {
   readonly description: string | undefined;
   readonly body: SafeHtml;
 }
+
 export interface Page extends EntryBase {
   readonly kind: "page";
 }
+
 export interface Post extends EntryBase {
   readonly kind: "post";
   readonly date: Date;
 }
+
 export type Entry = Page | Post;
 
-type Data = Readonly<Record<string, unknown>>;
+type FrontmatterData = Readonly<Record<string, unknown>>;
 
 const PERMALINK = /^\/[\p{L}\p{N}._~\-/]*$/u;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -49,55 +52,63 @@ export function parsePermalink(input: string): string | { readonly problem: stri
 
 // --- field readers: return a value, or push a readable problem ---------------
 
-function text(data: Data, key: string, problems: string[]): string {
+function text(data: FrontmatterData, key: string, problems: string[]): string {
   const value = data[key];
   if (typeof value === "string" && value.trim() !== "") return value.trim();
   problems.push(value == null ? `"${key}" is required` : `"${key}" must be a non-empty string`);
   return "";
 }
 
-function optionalText(data: Data, key: string, problems: string[]): string | undefined {
+function optionalText(data: FrontmatterData, key: string, problems: string[]): string | undefined {
   return data[key] == null ? undefined : text(data, key, problems);
 }
 
-function permalink(data: Data, problems: string[]): string {
+function permalink(data: FrontmatterData, problems: string[]): string {
   const raw = text(data, "permalink", problems);
   if (raw === "") return "";
+
   const parsed = parsePermalink(raw);
   if (typeof parsed === "string") return parsed;
+
   problems.push(parsed.problem);
   return "";
 }
 
 /** `YYYY-MM-DD`, read as UTC midnight so output never depends on the build machine's timezone. */
-function date(data: Data, problems: string[]): Date {
+function date(data: FrontmatterData, problems: string[]): Date {
   const value = data["date"];
   const parsed = typeof value === "string" && ISO_DATE.test(value) ? new Date(`${value}T00:00:00Z`) : undefined;
   if (parsed && !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(String(value))) return parsed;
+
   problems.push(`"date" must be a valid YYYY-MM-DD date (got ${JSON.stringify(value)})`);
   return new Date(Number.NaN);
 }
 
-function splitFrontmatter(source: string, problems: string[]): { data: Data; markdown: string } {
+function splitFrontmatter(source: string, problems: string[]): { data: FrontmatterData; markdown: string } {
   const match = FRONTMATTER.exec(source);
   if (!match) {
     problems.push("missing frontmatter (--- ... ---)");
     return { data: {}, markdown: source };
   }
+
   try {
     const data: unknown = parseYaml(match[1] ?? "") ?? {};
     if (typeof data === "object" && !Array.isArray(data)) {
-      return { data: data as Data, markdown: source.slice(match[0].length) };
+      return { data: data as FrontmatterData, markdown: source.slice(match[0].length) };
     }
     problems.push("frontmatter must be a key/value mapping");
   } catch (error) {
     problems.push(`invalid YAML: ${error instanceof Error ? error.message : String(error)}`);
   }
+
   return { data: {}, markdown: source };
 }
 
-/** Parses one Markdown file. Pure: no I/O. Throws `SiteError` listing every problem in the file. */
-export function parseEntry(kind: Entry["kind"], file: string, source: string): Entry {
+function isPostFile(file: string, postsDir: string): boolean {
+  return path.resolve(file).startsWith(path.resolve(postsDir) + path.sep);
+}
+
+function readEntry(file: string, kind: Entry["kind"], source: string): Entry {
   const problems: string[] = [];
   const { data, markdown } = splitFrontmatter(source, problems);
 
@@ -109,10 +120,16 @@ export function parseEntry(kind: Entry["kind"], file: string, source: string): E
     // Markdown is written by the site owner, so its HTML (raw HTML included) is trusted.
     body: SafeHtml.trust(marked.parse(markdown, { async: false })),
   };
+
   const entry: Entry = kind === "post" ? { ...base, kind, date: date(data, problems) } : { ...base, kind };
 
   throwIfProblems(problems.map((problem) => `${file}: ${problem}`));
   return entry;
+}
+
+/** Parses one Markdown file. Pure: no I/O. Throws `SiteError` listing every problem in the file. */
+export function parseEntry(kind: Entry["kind"], file: string, source: string): Entry {
+  return readEntry(file, kind, source);
 }
 
 /** Loads every `.md` under `contentDir`. Files under `postsDir` are posts, the rest are pages. */
@@ -120,14 +137,17 @@ export async function loadContent(contentDir: string, postsDir: string): Promise
   const files = await readdir(contentDir, { recursive: true }).catch(() => {
     throw new SiteError([`missing "${contentDir}/" directory`]);
   });
+
   const entries: Entry[] = [];
   const problems: string[] = [];
 
-  for (const relative of files.filter((f) => f.endsWith(".md")).sort()) {
-    const file = path.join(contentDir, relative);
-    const kind = path.resolve(file).startsWith(path.resolve(postsDir) + path.sep) ? "post" : "page";
+  for (const relative of files.filter((file) => file.endsWith(".md")).sort()) {
+    const file = path.join(contentDir, relative).split(path.sep).join("/");
+    const kind = isPostFile(file, postsDir) ? "post" : "page";
+
     try {
-      entries.push(parseEntry(kind, file.split(path.sep).join("/"), await readFile(file, "utf8")));
+      const source = await readFile(file, "utf8");
+      entries.push(parseEntry(kind, file, source));
     } catch (error) {
       if (!(error instanceof SiteError)) throw error;
       problems.push(...error.problems);

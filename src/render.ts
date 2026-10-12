@@ -19,36 +19,41 @@ interface DocumentProps {
 const time = (date: Date, lang: string): SafeHtml =>
   html`<time datetime="${date.toISOString().slice(0, 10)}">${new Intl.DateTimeFormat(lang, { dateStyle: "long", timeZone: "UTC" }).format(date)}</time>`;
 
+function templateVariables(site: RenderContext["site"], props: Pick<DocumentProps, "title" | "permalink">): Readonly<Record<"site.title" | "site.description" | "page.title" | "page.permalink" | "year", string>> {
+  return {
+    "site.title": site.title,
+    "site.description": site.description,
+    "page.title": props.title,
+    "page.permalink": props.permalink,
+    year: String(new Date().getFullYear()),
+  };
+}
+
+function documentTitle(site: RenderContext["site"], props: Pick<DocumentProps, "title" | "permalink">): string {
+  return props.permalink === "/" ? site.title : `${props.title} – ${site.title}`;
+}
+
 /** The one HTML shell: partials around the page content. */
 function document({ site, partials, stylesheet }: RenderContext, props: DocumentProps): string {
-  const partial = (template: string): SafeHtml =>
-    SafeHtml.trust(
-      fillPartial(template, {
-        "site.title": site.title,
-        "site.description": site.description,
-        "page.title": props.title,
-        "page.permalink": props.permalink,
-        year: String(new Date().getFullYear()),
-      }),
-    );
   const description = props.description ?? site.description;
+  const renderPartial = (template: string): SafeHtml => SafeHtml.trust(fillPartial(template, templateVariables(site, props)));
 
   return html`<!doctype html>
 <html lang="${site.lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${props.permalink === "/" ? site.title : `${props.title} – ${site.title}`}</title>
+<title>${documentTitle(site, props)}</title>
 ${description !== "" && html`<meta name="description" content="${description}">`}
 ${stylesheet !== undefined && html`<link rel="stylesheet" href="${stylesheet}">`}
-${partial(partials.head)}
+${renderPartial(partials.head)}
 </head>
 <body>
-${partial(partials.header)}
+${renderPartial(partials.header)}
 <main>
 ${props.main}
 </main>
-${partial(partials.footer)}
+${renderPartial(partials.footer)}
 </body>
 </html>
 `.toString();
