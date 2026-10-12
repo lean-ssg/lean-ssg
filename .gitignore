@@ -1,5 +1,3 @@
 node_modules/
 lib/
 *.tgz
-example/dist/
-example/node_modules/

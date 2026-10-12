@@ -78,7 +78,6 @@ Every problem (config, partials, content) is reported in one run; the build exit
 ```bash
 npm install       # also compiles src/ to lib/
 npm run check     # typecheck + tests
-npm run example   # build example/ with the local code
 ```
 
 Releases are published from CI — see [RELEASING.md](RELEASING.md).

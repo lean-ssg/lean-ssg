@@ -38,12 +38,3 @@ jobs:
 
       - name: Pack exactly what would be published
         run: npm pack
-
-      - name: "Smoke test: invalid content fails the build"
-        working-directory: example
-        run: |
-          printf -- '---\ntitle: Broken\n---\n' > content/broken.md
-          if npx lean-ssg build; then
-            echo "::error::Build should fail when a page has no permalink"
-            exit 1
-          fi
