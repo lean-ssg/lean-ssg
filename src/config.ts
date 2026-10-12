@@ -66,17 +66,17 @@ export function parseConfig(json: unknown, file: string): SiteConfig {
 
 /** `--config` path if given (must exist), else `lean-ssg.json` if present, else defaults. */
 export async function loadConfig(file: string | undefined): Promise<SiteConfig> {
-  const path = file ?? (existsSync(CONVENTIONS.defaultConfig) ? CONVENTIONS.defaultConfig : undefined);
-  if (path === undefined) return DEFAULT_CONFIG;
+  const configPath = file ?? (existsSync(CONVENTIONS.defaultConfig) ? CONVENTIONS.defaultConfig : undefined);
+  if (configPath === undefined) return DEFAULT_CONFIG;
 
-  const source = await readFile(path, "utf8").catch(() => {
-    throw new SiteError([`config file not found: ${path}`]);
+  const source = await readFile(configPath, "utf8").catch(() => {
+    throw new SiteError([`config file not found: ${configPath}`]);
   });
   let json: unknown;
   try {
     json = JSON.parse(source);
   } catch (error) {
-    throw new SiteError([`${path}: invalid JSON (${(error as Error).message})`]);
+    throw new SiteError([`${configPath}: invalid JSON (${(error as Error).message})`]);
   }
-  return parseConfig(json, path);
+  return parseConfig(json, configPath);
 }
